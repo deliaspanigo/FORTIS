@@ -13,11 +13,12 @@ if (interactive()) {
   path_www <- "inst/www"
   if (!dir.exists(path_www)) path_www <- "www"
 
-  if (dir.exists(path_www)) {
-    # Usamos los alias que definimos en los módulos
-    addResourcePath("home_assets_home", file.path(path_www, "fn10_home"))
-    addResourcePath("tkd_imgs_home", file.path(path_www, "fn05_tkd"))
-  }
+  # if (dir.exists(path_www)) {
+  #   # Usamos los alias que definimos en los módulos
+  #   addResourcePath("top_img_home", file.path(path_www, "fn01_top_img"))
+  #   addResourcePath("home_assets_home", file.path(path_www, "fn10_home"))
+  #   addResourcePath("tkd_imgs_home", file.path(path_www, "fn05_tkd"))
+  # }
 }
 
 ui <- page_fillable(
