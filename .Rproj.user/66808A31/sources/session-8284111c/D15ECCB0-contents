@@ -2,25 +2,10 @@ library(shiny)
 library(shinyjs)
 library(bslib)
 
-# 1. Cargar las funciones de tu librería (Módulos)
-# Si estás dentro del proyecto de la librería, usa:
+# 1. Cargar la librería
 devtools::load_all()
 
-# 2. Configuración de Rutas (Parche para desarrollo)
-# Esto asegura que Shiny encuentre las fotos aunque no hayas instalado el paquete
-if (interactive()) {
-  # Busca la carpeta www localmente
-  path_www <- "inst/www"
-  if (!dir.exists(path_www)) path_www <- "www"
-
-  # if (dir.exists(path_www)) {
-  #   # Usamos los alias que definimos en los módulos
-  #   addResourcePath("top_img_home", file.path(path_www, "fn01_top_img"))
-  #   addResourcePath("home_assets_home", file.path(path_www, "fn10_home"))
-  #   addResourcePath("tkd_imgs_home", file.path(path_www, "fn05_tkd"))
-  # }
-}
-
+# 2. UI
 ui <- page_fillable(
   useShinyjs(),
   navset_hidden(
@@ -30,19 +15,39 @@ ui <- page_fillable(
   )
 )
 
+# 3. Server
 server <- function(input, output, session) {
-  # Lógica del Módulo 01
-  home_logic <- mod_01_home_server("home", debug = TRUE)
 
-  # Lógica del Módulo 02
-  mod_02_options_server("options", debug = TRUE)
+  # 1. Inicializar servidores de módulos
+  home_logic    <- mod_01_home_server("home", debug = TRUE)
+  options_logic <- mod_02_options_server("options", debug = TRUE)
 
-  # Cambio de página al hacer click en ENTRAR
+  # --- NAVEGACIÓN: HOME -> OPTIONS ---
+  observeEvent(home_logic$goto(), {
+    req(home_logic$goto()) # Solo si no es NULL
+
+    # Cambiamos de pestaña
+    nav_select("main_nav", "page_options")
+
+    # IMPORTANTE: Limpiamos la señal en el origen para que el pró`ximo clic se detecte
+    home_logic$reset()
+  }, ignoreInit = TRUE)
+
+  # --- NAVEGACIÓN: OPTIONS -> HOME ---
+  observeEvent(options_logic$goto(), {
+    req(options_logic$goto())
+
+    # Cambiamos de pestaña
+    nav_select("main_nav", "page_home")
+
+    # IMPORTANTE: Limpiamos la señal en el origen
+    options_logic$reset()
+  }, ignoreInit = TRUE)
+
+  # --- Debug opcional para ver que las señales viajan ---
   observe({
-    # Usamos el valor reactivo que devuelve el módulo
-    if (home_logic$clicked()) {
-      nav_select("main_nav", "page_options")
-    }
+    print(paste("Señal Home:", home_logic$goto()))
+    print(paste("Señal Options:", options_logic$goto()))
   })
 }
 
