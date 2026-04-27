@@ -1,0 +1,280 @@
+library(shiny)
+library(leaflet)
+library(maps)
+library(sf)
+library(shinyjs)
+library(jsonlite)
+
+# ==============================================================================
+# NEO-TKD: HUD TERMINAL EDITION
+# ==============================================================================
+
+# 1. CONFIGURACIÓN DE RUTAS Y DATOS
+find_www <- function() {
+  current <- getwd()
+  if (dir.exists("www")) return(file.path(current, "www"))
+  if (dir.exists("../www")) return(file.path(dirname(current), "www"))
+  return(NULL)
+}
+
+www_path <- find_www()
+if (is.null(www_path)) stop("No se encontró la carpeta 'www'")
+
+addResourcePath('fn01',     file.path(www_path, 'fn01_top_img'))
+addResourcePath('fn02',     file.path(www_path, 'fn02_trento'))
+addResourcePath('car_01',   file.path(www_path, 'fn03_carrusel01'))
+addResourcePath('car_02',   file.path(www_path, 'fn04_carrusel02'))
+addResourcePath('tkd_imgs', file.path(www_path, 'fn05_tkd'))
+addResourcePath('bg_imgs',  file.path(www_path, 'fn06_background'))
+
+world_sf <- sf::st_as_sf(maps::map("world", fill = TRUE, plot = FALSE))
+
+bg_files <- list.files(file.path(www_path, "fn06_background"), pattern = "\\.(png|webp|jpg|jpeg)$")
+bg_paths <- paste0("bg_imgs/", bg_files)
+
+# 2. FUNCIONES AUXILIARES
+get_imgs <- function(folder, prefix, class_name) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg|svg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(files, function(img) tags$img(src = paste0(prefix, "/", img), class = class_name))
+}
+
+get_carousel_colored <- function(folder, prefix) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(rep(files, 5), function(img) {
+    div(class = "carousel-item", tags$img(src = paste0(prefix, "/", img)))
+  })
+}
+
+# ==============================================================================
+# UI
+# ==============================================================================
+
+ui <- fluidPage(
+  useShinyjs(),
+  tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Montserrat:wght@300;700;800&display=swap"),
+    tags$style(HTML("
+      .container-fluid { padding: 0 !important; margin: 0 !important; }
+      body { margin: 0; padding: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; background: #000; }
+
+      .prism-wrapper { display: flex; height: 100vh; width: 100vw; position: relative; }
+
+      /* IZQUIERDA: FONDO DINÁMICO SOLO AQUÍ */
+      .left-main {
+        flex: 0.8;
+        display: flex;
+        flex-direction: column;
+        padding-left: 60px;
+        justify-content: center;
+        z-index: 10;
+        color: white;
+        position: relative;
+        background-size: cover;
+        background-position: center;
+        transition: background-image 1.5s ease-in-out;
+      }
+
+      .fn01-img { height: 35px; width: auto; margin-bottom: 10px; filter: drop-shadow(0 0 10px #00f2fe); }
+      .fn02-img { height: 25px; width: auto; opacity: 0.8; }
+      .prism-title { font-family: 'Orbitron'; font-size: 4.5rem; font-weight: 900; line-height: 0.85; letter-spacing: -2px; margin: 0; }
+
+      /* CENTRO */
+      .center-panel {
+        flex: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #0a0a0a;
+      }
+
+      /* MAPA TRANSLÚCIDO */
+      #world_map {
+        width: 100% !important;
+        height: 480px !important;
+        background: rgba(0, 242, 254, 0.05) !important; /* Color agua */
+        border: 1px solid rgba(0, 242, 254, 0.3);
+        border-radius: 20px;
+      }
+
+      .map-hud-container { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 15px; }
+      .map-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
+
+      .map-controls-row {
+        display: flex; gap: 15px; background: rgba(255, 255, 255, 0.03);
+        padding: 10px; border-radius: 15px; border: 1px solid rgba(0, 242, 254, 0.1);
+      }
+
+      .country-badge {
+        padding: 10px; background: #00f2fe; color: #000; border-radius: 8px;
+        font-family: 'Orbitron'; font-size: 0.8rem; font-weight: 900; min-width: 140px; text-align: center;
+      }
+
+      /* DERECHA: ENSANCHADO CON GRADIENTE ROJO-AZUL */
+      .right-tkd-panel {
+        flex: 0.8; /* Aumentado */
+        background: linear-gradient(135deg, rgba(255, 0, 0, 0.2) 0%, rgba(0, 0, 255, 0.2) 100%);
+        backdrop-filter: blur(20px);
+        display: flex; flex-direction: column; align-items: center; overflow: hidden;
+        border-left: 1px solid rgba(255, 255, 255, 0.1); padding: 20px;
+      }
+      .tkd-scroll-v { display: flex; flex-direction: column; gap: 20px; animation: scrollV 50s linear infinite; }
+      .tkd-img { width: 100%; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+
+      /* HUD ELEMENTOS */
+      .crystal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; max-width: 900px; margin-top: 15px; }
+      .crystal-card {
+        height: 70px; background: rgba(255, 255, 255, 0.05); border-radius: 10px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: white; border: 1px solid rgba(255,255,255,0.1); font-family: 'Orbitron';
+      }
+
+      .hud-toggle-btn {
+        position: absolute; top: 30px; right: 30px; background: transparent;
+        border: 1px solid #00f2fe; color: #00f2fe; padding: 5px 15px; cursor: pointer;
+      }
+
+      .bottom-area { position: absolute; bottom: 0; left: 0; width: 100%; padding-bottom: 15px; pointer-events: none; }
+      .carousel-track { width: 100%; overflow: hidden; white-space: nowrap; opacity: 0.5; }
+      .carousel-content { display: inline-flex; animation: scrollH 60s linear infinite; }
+      .carousel-item { margin: 0 40px; filter: grayscale(1) invert(1); }
+      .carousel-item img { height: 30px; }
+
+      @keyframes scrollH { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+      @keyframes scrollV { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+    ")),
+    tags$script(HTML(sprintf("
+      var images = %s;
+      var currentIndex = 0;
+      function nextBG() {
+        var bg = document.querySelector('.left-main');
+        if (bg && images.length > 0) {
+          bg.style.backgroundImage = 'url(' + images[currentIndex] + ')';
+          currentIndex = (currentIndex + 1) %% images.length;
+        }
+      }
+      setInterval(nextBG, 5000);
+      window.onload = nextBG;
+    ", jsonlite::toJSON(bg_paths))))
+  ),
+
+  div(class = "prism-wrapper",
+      # IZQUIERDA (Fondo Dinámico)
+      div(class = "left-main",
+          div(class = "brand-group",
+              div(get_imgs("fn01_top_img", "fn01", "fn01-img")),
+              div(get_imgs("fn02_trento", "fn02", "fn02-img"))
+          ),
+          h1(class = "prism-title", "NEO", br(), "TKD"),
+          p(style="font-weight:700; color:#00f2fe; letter-spacing: 3px;", "HOLO-INTERFACE")
+      ),
+
+      # CENTRO
+      div(class = "center-panel",
+          actionButton("btn_hud", "MAP HUD", class = "hud-toggle-btn"),
+
+          div(id = "map_card_id", class = "map-hud-container",
+              leafletOutput("world_map"),
+              div(class = "map-controls-row",
+                  actionButton("reset_map", icon("sync-alt"), style="background:none; border:none; color:white;"),
+                  div(style="flex:1;",
+                      selectInput("country_select", NULL,
+                                  choices = c("GEO-SCANNER..." = "", unique(world_sf$ID)),
+                                  width = "100%")
+                  ),
+                  div(class = "country-badge", textOutput("selected_txt"))
+              )
+          ),
+
+          div(class = "crystal-grid",
+              div(class = "crystal-card", icon("bolt"), span("SPD", style="font-size:10px")),
+              div(class = "crystal-card", icon("shield-alt"), span("DEF", style="font-size:10px")),
+              div(class = "crystal-card", icon("trophy"), span("RNK", style="font-size:10px")),
+              div(class = "crystal-card", icon("cog"), span("SET", style="font-size:10px"))
+          )
+      ),
+
+      # DERECHA (Gradiente y Fotos)
+      div(class = "right-tkd-panel",
+          div(class = "tkd-scroll-v",
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img"),
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img")
+          )
+      ),
+
+      # CAROUSEL
+      div(class = "bottom-area",
+          div(class = "carousel-track",
+              div(class = "carousel-content", get_carousel_colored("fn03_carrusel01", "car_01"))
+          )
+      )
+  )
+)
+
+# ==============================================================================
+# SERVER
+# ==============================================================================
+
+server <- function(input, output, session) {
+  val_country <- reactiveVal("GLOBAL")
+
+  observeEvent(input$btn_hud, { shinyjs::toggleClass(id = "map_card_id", class = "map-hidden") })
+
+  output$world_map <- renderLeaflet({
+    leaflet(world_sf, options = leafletOptions(
+      worldCopyJump = FALSE, minZoom = 2, attributionControl = FALSE, zoomControl = FALSE
+    )) %>%
+      addPolygons(
+        fillColor = "rgba(0, 242, 254, 0.15)",
+        weight = 2,
+        color = "white",
+        fillOpacity = 1,
+        layerId = ~ID,
+        # NOMBRE DEL PAÍS AL PASAR EL MOUSE
+        label = ~ID,
+        labelOptions = labelOptions(
+          style = list("font-family" = "Orbitron", "color" = "#00f2fe", "background" = "#000", "border" = "1px solid #00f2fe"),
+          direction = "auto"
+        ),
+        highlightOptions = highlightOptions(
+          weight = 3, color = "#00f2fe", fillOpacity = 0.5, bringToFront = TRUE
+        )
+      ) %>%
+      htmlwidgets::onRender("function(el, x) { el.style.background = 'rgba(0, 242, 254, 0.05)'; }")
+  })
+
+  observeEvent(input$country_select, {
+    req(input$country_select)
+    val_country(input$country_select)
+    proxy <- leafletProxy("world_map")
+    proxy %>% clearGroup("highlight")
+    if(input$country_select != "") {
+      selected_poly <- world_sf[world_sf$ID == input$country_select, ]
+      proxy %>% addPolygons(
+        data = selected_poly, fillColor = "#00f2fe", fillOpacity = 0.7,
+        color = "white", weight = 3, group = "highlight"
+      )
+      bbox <- st_bbox(selected_poly)
+      proxy %>% flyToBounds(bbox[["xmin"]], bbox[["ymin"]], bbox[["xmax"]], bbox[["ymax"]])
+    }
+  })
+
+  observeEvent(input$world_map_shape_click, {
+    updateSelectInput(session, "country_select", selected = input$world_map_shape_click$id)
+  })
+
+  observeEvent(input$reset_map, {
+    updateSelectInput(session, "country_select", selected = "")
+    val_country("GLOBAL")
+    leafletProxy("world_map") %>% clearGroup("highlight") %>% flyTo(lng = 0, lat = 20, zoom = 2)
+  })
+
+  output$selected_txt <- renderText({ val_country() })
+}
+
+shinyApp(ui, server)

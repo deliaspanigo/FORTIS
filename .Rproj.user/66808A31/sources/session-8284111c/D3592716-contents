@@ -1,0 +1,20 @@
+# app.R principal
+library(shiny)
+library(shinyjs)
+library(jsonlite)
+
+devtools::load_all()
+
+# Source del módulo
+#source("mod_fortis_terminal.R")
+
+ui <- fluidPage(
+  useShinyjs(),
+  fortis_terminal_ui("terminal1")  # Puedes tener múltiples instancias
+)
+
+server <- function(input, output, session) {
+  fortis_terminal_server("terminal1")
+}
+
+shinyApp(ui, server)

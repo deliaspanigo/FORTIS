@@ -1,0 +1,25 @@
+Package: FORTIS
+Type: Package
+Title: Taekwondo Management and Performance Analysis Tools
+Version: 0.1.0
+Authors@R: c(person("David Elias", "Panigo", email = "tuemail@mail.com", role = c("aut", "cre")))
+Description: Software package for taekwondo athlete management, tournament analysis, training control, and performance statistics.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    shiny,
+    shinydashboard,
+    dplyr,
+    ggplot2,
+    DT,
+    readxl,
+    openxlsx,
+    shinyjs,
+    jsonlite
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown
+Depends:
+    R (>= 4.5.2)

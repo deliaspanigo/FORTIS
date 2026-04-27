@@ -1,0 +1,267 @@
+library(shiny)
+library(leaflet)
+library(maps)
+library(sf)
+library(shinyjs)
+library(jsonlite)
+
+# ==============================================================================
+# NEO-TKD: DYNAMIC BACKGROUND EDITION (EDGE-TO-EDGE FIXED)
+# ==============================================================================
+
+# 1. CONFIGURACIÓN DE RUTAS Y DATOS
+find_www <- function() {
+  current <- getwd()
+  if (dir.exists("www")) return(file.path(current, "www"))
+  if (dir.exists("../www")) return(file.path(dirname(current), "www"))
+  return(NULL)
+}
+
+www_path <- find_www()
+if (is.null(www_path)) stop("No se encontró la carpeta 'www'")
+
+addResourcePath('fn01',     file.path(www_path, 'fn01_top_img'))
+addResourcePath('fn02',     file.path(www_path, 'fn02_trento'))
+addResourcePath('car_01',   file.path(www_path, 'fn03_carrusel01'))
+addResourcePath('car_02',   file.path(www_path, 'fn04_carrusel02'))
+addResourcePath('tkd_imgs', file.path(www_path, 'fn05_tkd'))
+addResourcePath('bg_imgs',  file.path(www_path, 'fn06_background'))
+
+world_sf <- sf::st_as_sf(maps::map("world", fill = TRUE, plot = FALSE))
+
+bg_files <- list.files(file.path(www_path, "fn06_background"), pattern = "\\.(png|webp|jpg|jpeg)$")
+bg_paths <- paste0("bg_imgs/", bg_files)
+
+# 2. FUNCIONES AUXILIARES
+get_imgs <- function(folder, prefix, class_name) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg|svg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(files, function(img) tags$img(src = paste0(prefix, "/", img), class = class_name))
+}
+
+get_carousel_colored <- function(folder, prefix) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(rep(files, 5), function(img) {
+    div(class = "carousel-item", tags$img(src = paste0(prefix, "/", img)))
+  })
+}
+
+# ==============================================================================
+# UI
+# ==============================================================================
+
+ui <- fluidPage(
+  useShinyjs(),
+  tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Montserrat:wght@300;700;800&display=swap"),
+    tags$style(HTML("
+      /* ELIMINAR MÁRGENES PREDETERMINADOS DE SHINY */
+      .container-fluid { padding: 0 !important; margin: 0 !important; }
+
+      /* FONDO DINÁMICO FULL SCREEN */
+      #dynamic-bg {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: -1;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 1.5s ease-in-out;
+      }
+
+      body { margin: 0; padding: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; background: #000; }
+
+      .prism-wrapper {
+        display: flex; height: 100vh; width: 100vw; position: relative;
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* AJUSTE PANEL IZQUIERDO */
+      .left-main {
+        flex: 0.8;
+        display: flex;
+        flex-direction: column;
+        padding-left: 50px; /* Espacio estético para el texto */
+        justify-content: center;
+        z-index: 10;
+        color: white;
+      }
+
+      .fn01-img { height: 35px; width: auto; margin-bottom: 10px; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
+      .fn02-img { height: 25px; width: auto; opacity: 0.9; }
+      .prism-title { font-family: 'Orbitron'; font-size: 4rem; font-weight: 900; line-height: 0.85; letter-spacing: -2px; margin: 0; text-shadow: 2px 2px 10px rgba(0,0,0,0.8); }
+
+      .center-panel { flex: 2.2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 20px; }
+
+      .map-hub-card {
+        width: 100%; max-width: 900px;
+        background: rgba(238, 242, 245, 0.85);
+        backdrop-filter: blur(10px);
+        border-radius: 40px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        padding: 25px; display: flex; flex-direction: column; gap: 20px;
+      }
+
+      #world_map { height: 380px !important; border-radius: 25px; background: white !important; }
+
+      .map-controls-row { display: flex; align-items: center; gap: 20px; width: 100%; }
+      .map-select-wrapper { flex: 1; }
+      .country-badge {
+        padding: 12px 25px; background: #2d3436; color: #00f2fe; border-radius: 15px;
+        font-family: 'Orbitron'; font-size: 1rem; min-width: 180px; text-align: center;
+      }
+
+      .reset-btn {
+        background: white; border: none; border-radius: 12px; height: 45px; width: 45px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        color: #ff7675; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center;
+      }
+
+      .crystal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 900px; }
+      .crystal-card {
+        height: 100px; background: rgba(238, 242, 245, 0.8); backdrop-filter: blur(5px);
+        border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        cursor: pointer; transition: 0.3s;
+      }
+      .crystal-card:hover { transform: translateY(-5px); color: #00f2fe; background: white; }
+      .crystal-card span { font-weight: 800; font-size: 0.75rem; letter-spacing: 2px; margin-top: 8px; }
+
+      .right-tkd-panel {
+        flex: 0.5; background: rgba(255,255,255,0.15); backdrop-filter: blur(15px);
+        display: flex; flex-direction: column; align-items: center; overflow: hidden;
+        border-left: 1px solid rgba(255,255,255,0.2); padding: 15px;
+      }
+      .tkd-scroll-v { display: flex; flex-direction: column; gap: 15px; animation: scrollV 45s linear infinite; }
+      .tkd-img { width: 100%; border-radius: 15px; }
+
+      .bottom-area { position: absolute; bottom: 0; left: 0; width: 100%; padding-bottom: 20px; }
+      .carousel-track { width: 100%; overflow: hidden; white-space: nowrap; }
+      .carousel-content { display: inline-flex; align-items: center; animation: scrollH 50s linear infinite; }
+      .carousel-item { margin: 0 25px; }
+      .carousel-item img { height: 45px; width: auto; }
+
+      @keyframes scrollH { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+      @keyframes scrollV { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+    ")),
+    tags$script(HTML(sprintf("
+      var images = %s;
+      var currentIndex = 0;
+      function nextBG() {
+        var bg = document.getElementById('dynamic-bg');
+        if (bg && images.length > 0) {
+          bg.style.backgroundImage = 'url(' + images[currentIndex] + ')';
+          currentIndex = (currentIndex + 1) %% images.length;
+        }
+      }
+      setInterval(nextBG, 5000);
+      window.onload = nextBG;
+    ", jsonlite::toJSON(bg_paths))))
+  ),
+
+  div(id = "dynamic-bg"),
+
+  div(class = "prism-wrapper",
+      div(class = "left-main",
+          div(class = "brand-group",
+              div(get_imgs("fn01_top_img", "fn01", "fn01-img")),
+              div(get_imgs("fn02_trento", "fn02", "fn02-img"))
+          ),
+          h1(class = "prism-title", "NEO", br(), "TKD"),
+          p(style="font-weight:700; color:rgba(255,255,255,0.8); margin-top:10px;", "PRISM INTERFACE")
+      ),
+
+      div(class = "center-panel",
+          div(class = "map-hub-card",
+              leafletOutput("world_map"),
+              div(class = "map-controls-row",
+                  actionButton("reset_map", icon("sync-alt"), class = "reset-btn"),
+                  div(class = "map-select-wrapper",
+                      selectInput("country_select", NULL,
+                                  choices = c("LOCALIZAR PAÍS..." = "", unique(world_sf$ID)),
+                                  width = "100%")
+                  ),
+                  div(class = "country-badge", textOutput("selected_txt"))
+              )
+          ),
+
+          div(class = "crystal-grid",
+              div(class = "crystal-card", icon("bolt", class="fa-2x"), span("SPEED")),
+              div(class = "crystal-card", icon("shield-alt", class="fa-2x"), span("DEFENSE")),
+              div(class = "crystal-card", icon("trophy", class="fa-2x"), span("RANK")),
+              div(class = "crystal-card", icon("cog", class="fa-2x"), span("SETUP"))
+          )
+      ),
+
+      div(class = "right-tkd-panel",
+          div(class = "tkd-scroll-v",
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img"),
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img")
+          )
+      ),
+
+      div(class = "bottom-area",
+          div(class = "carousel-track",
+              div(class = "carousel-content", get_carousel_colored("fn03_carrusel01", "car_01"))
+          ),
+          div(class = "carousel-track",
+              div(class = "carousel-content", style="animation-duration: 35s;", get_carousel_colored("fn04_carrusel02", "car_02"))
+          )
+      )
+  )
+)
+
+# ==============================================================================
+# SERVER
+# ==============================================================================
+
+server <- function(input, output, session) {
+  val_country <- reactiveVal("GLOBAL")
+
+  output$world_map <- renderLeaflet({
+    leaflet(world_sf, options = leafletOptions(worldCopyJump = FALSE, minZoom = 2)) %>%
+      setMaxBounds(lng1 = -180, lat1 = -90, lng2 = 180, lat2 = 90) %>%
+      addProviderTiles(providers$CartoDB.PositronNoLabels) %>%
+      addPolygons(
+        fillColor = "#d1d9e6", weight = 1, color = "white", fillOpacity = 0.5, layerId = ~ID,
+        highlightOptions = highlightOptions(weight = 2, color = "#2d3436", fillOpacity = 0.7)
+      )
+  })
+
+  observeEvent(input$country_select, {
+    req(input$country_select)
+    val_country(input$country_select)
+    proxy <- leafletProxy("world_map")
+    proxy %>% clearGroup("highlight")
+
+    if(input$country_select != "") {
+      selected_poly <- world_sf[world_sf$ID == input$country_select, ]
+      proxy %>% addPolygons(
+        data = selected_poly, fillColor = "#00f2fe", fillOpacity = 0.8,
+        color = "#2d3436", weight = 3, group = "highlight"
+      )
+      bbox <- st_bbox(selected_poly)
+      proxy %>% flyToBounds(bbox[["xmin"]], bbox[["ymin"]], bbox[["xmax"]], bbox[["ymax"]])
+    }
+  })
+
+  observeEvent(input$world_map_shape_click, {
+    updateSelectInput(session, "country_select", selected = input$world_map_shape_click$id)
+  })
+
+  observeEvent(input$reset_map, {
+    updateSelectInput(session, "country_select", selected = "")
+    val_country("GLOBAL")
+    proxy <- leafletProxy("world_map")
+    proxy %>% clearGroup("highlight")
+    proxy %>% flyTo(lng = 0, lat = 20, zoom = 2)
+  })
+
+  output$selected_txt <- renderText({ val_country() })
+}
+
+shinyApp(ui, server)

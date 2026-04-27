@@ -1,0 +1,359 @@
+# mod_01_home.R
+
+
+
+library(shiny)
+
+library(shinyjs)
+
+
+
+# ==============================================================================
+
+# MÓDULO HOME (FORTIS TKD) - 100% OFFLINE & AUTOCONTENIDO
+
+# ==============================================================================
+
+
+
+mod_01_home_ui <- function(id) {
+  
+  ns <- NS(id)
+  
+  
+  
+  # --- Lógica de rutas ---
+  
+  find_www <- function() {
+    
+    
+    
+    # posibles <- c(file.path(getwd(), "inst", "www"), file.path(getwd(), "www"), file.path(dirname(getwd()), "inst", "www"))
+    
+    posibles <- system.file("www", package = "FORTIS")
+    
+    for (r in posibles) if (dir.exists(r)) return(r)
+    
+    return(NULL)
+    
+  }
+  
+  
+  
+  path_www <- find_www()
+  
+  tkd_files <- if(!is.null(path_www)) {
+    
+    addResourcePath("tkd_imgs", file.path(path_www, "fn05_tkd"))
+    
+    addResourcePath("home_assets", file.path(path_www, "fn10_home"))
+    
+    list.files(file.path(path_www, "fn05_tkd"), pattern = "\\.(png|jpg|jpeg|webp)$", ignore.case = TRUE)
+    
+  } else { character(0) }
+  
+  
+  
+  tagList(
+    
+    useShinyjs(),
+    
+    tags$head(
+      
+      tags$style(HTML(paste0("
+
+        /* STACK DE FUENTES DE SISTEMA (SOPORTE OFFLINE) */
+
+        :root {
+
+          --f-header: 'Impact', 'Arial Black', sans-serif;
+
+          --f-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+          --c-fortis: #00f2fe;
+
+        }
+
+
+
+        body, .container-fluid { padding: 0 !important; margin: 0 !important; overflow: hidden; background: #000; }
+
+
+
+        #", ns("home_wrapper"), " {
+
+          width: 100vw; height: 100vh; position: relative; overflow: hidden;
+
+          font-family: var(--f-body);
+
+        }
+
+
+
+        /* Estilos del Panel de Debug */
+
+        .debug-console {
+
+          position: absolute; top: 10px; left: 10px; z-index: 999;
+
+          background: rgba(0, 212, 255, 0.1); border: 1px solid #00d4ff;
+
+          color: #00d4ff; padding: 10px; font-family: 'Consolas', 'Monaco', monospace;
+
+          font-size: 10px; border-radius: 4px; pointer-events: none;
+
+          text-transform: uppercase; letter-spacing: 1px;
+
+        }
+
+
+
+        .korea-fullscreen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: contain; z-index: 50; pointer-events: none; }
+
+
+
+        .brand-box {
+
+          position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+
+          z-index: 100; color: white; text-align: center; display: flex; flex-direction: column; align-items: center;
+
+        }
+
+
+
+        .brand-logo { width: 110px; margin-bottom: 18px; }
+
+
+
+        .title-main {
+
+          font-family: var(--f-header);
+
+          font-size: 8.5rem;
+
+          line-height: 0.82;
+
+          margin: 0;
+
+          letter-spacing: -2px;
+
+        }
+
+
+
+        .title-sub {
+
+          margin-top: 10px; font-size: 1.6rem; font-weight: 800;
+
+          letter-spacing: 10px; color: var(--c-fortis); text-transform: uppercase;
+
+        }
+
+
+
+        .btn-action {
+
+          margin-top: 35px; background: transparent; color: white;
+
+          border: 2px solid var(--c-fortis); padding: 15px 40px;
+
+          font-family: var(--f-header); font-size: 1.4rem;
+
+          letter-spacing: 2px; transition: all 0.3s ease; cursor: pointer;
+
+        }
+
+
+
+        .btn-action:hover { background: var(--c-fortis); color: #000; box-shadow: 0 0 25px rgba(0, 242, 254, 0.5); }
+
+
+
+        .bottom-area { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; z-index: 5; }
+
+
+
+        .carousel-track { width: 100%; overflow: hidden; white-space: nowrap; opacity: 0.4; }
+
+        .carousel-content { display: inline-flex; align-items: center; }
+
+        .carousel-item img { height: 14vh; object-fit: cover; border-right: 1px solid rgba(255,255,255,0.1); }
+
+
+
+        @keyframes scrollH { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        .v1 { animation: scrollH 400s linear infinite; } .v2 { animation: scrollH 550s linear infinite; }
+
+        .v3 { animation: scrollH 480s linear infinite; } .v4 { animation: scrollH 800s linear infinite; }
+
+        .v5 { animation: scrollH 520s linear infinite; } .v6 { animation: scrollH 900s linear infinite; }
+
+        .v7 { animation: scrollH 450s linear infinite; }
+
+
+
+        .footer-container {
+
+          position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+
+          z-index: 120; display: flex; flex-direction: column; align-items: center;
+
+        }
+
+
+
+        .olympic-logo { width: 200px; margin-bottom: 5px; }
+
+
+
+        .footer-quote {
+
+          color: white; font-size: 1.8rem; font-weight: 900;
+
+          letter-spacing: 4px; white-space: nowrap; font-family: var(--f-header);
+
+        }
+
+      ")))
+      
+    ),
+    
+    
+    
+    div(id = ns("home_wrapper"),
+        
+        uiOutput(ns("debug_overlay")),
+        
+        
+        
+        tags$img(src = paste0("home_assets", "/flag_korea_south_transparent.png"), class = "korea-fullscreen"),
+        
+        
+        
+        div(class = "brand-box",
+            
+            tags$img(src = paste0("home_assets", "/flag_korea_south_transparent.png"), class = "brand-logo"),
+            
+            h1(class = "title-main", "FORTIS"),
+            
+            div(class = "title-sub", "TAEKWONDO"),
+            
+            actionButton(ns("enter_btn"), "ENTRAR", class = "btn-action")
+            
+        ),
+        
+        
+        
+        div(class = "bottom-area",
+            
+            lapply(1:7, function(i) {
+              
+              if(length(tkd_files) > 0) {
+                
+                imgs_pool <- rep(sample(tkd_files), 10)
+                
+                div(class = "carousel-track",
+                    
+                    div(class = paste0("carousel-content v", i),
+                        
+                        lapply(imgs_pool, function(img) {
+                          
+                          div(class = "carousel-item", tags$img(src = paste0("tkd_imgs", "/", img)))
+                          
+                        })
+                        
+                    )
+                    
+                )
+                
+              }
+              
+            })
+            
+        ),
+        
+        
+        
+        div(class = "footer-container",
+            
+            tags$img(src = paste0("home_assets", "/olympic_ring_transparent_png.png"), class = "olympic-logo"),
+            
+            div(class = "footer-quote", "CITIUS • ALTIUS • FORTIUS • COMMUNITER")
+            
+        )
+        
+    )
+    
+  )
+  
+}
+
+
+
+mod_01_home_server <- function(id, debug = TRUE) {
+  
+  moduleServer(id, function(input, output, session) {
+    
+    
+    
+    click_data <- reactiveValues(status = FALSE, time = NULL)
+    
+    
+    
+    observeEvent(input$enter_btn, {
+      
+      click_data$status <- TRUE
+      
+      click_data$time <- Sys.time()
+      
+    })
+    
+    
+    
+    output$debug_overlay <- renderUI({
+      
+      req(debug)
+      
+      time_string <- if (is.null(click_data$time)) "N/A" else format(click_data$time, "%d/%m/%Y %H:%M:%S")
+      
+      
+      
+      div(class = "debug-console",
+          
+          div(style = "font-weight: 800; border-bottom: 1px solid #00d4ff; margin-bottom: 5px;", "Fortis Core System"),
+          
+          div(paste("STATUS   :", ifelse(click_data$status, "GRANTED", "LOCKED"))),
+          
+          div(paste("TIMESTAMP:", time_string)),
+          
+          div(paste("INTERFACE: OFFLINE_MODE"))
+          
+      )
+      
+    })
+    
+    
+    
+    return(list(
+      
+      clicked = reactive({ click_data$status }),
+      
+      time    = reactive({ click_data$time })
+      
+    ))
+    
+  })
+  
+}
+
+
+
+# # # --- Test ---
+
+# ui <- fluidPage(mod_01_home_ui("home"))
+
+# server <- function(input, output, session) { mod_01_home_server("home", debug = TRUE) }
+
+# shinyApp(ui, server)

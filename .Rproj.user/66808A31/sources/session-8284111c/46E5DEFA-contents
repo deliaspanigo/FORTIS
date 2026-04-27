@@ -1,0 +1,328 @@
+library(shiny)
+library(leaflet)
+library(maps)
+library(sf)
+library(shinyjs)
+library(jsonlite)
+
+# ==============================================================================
+# NEO-TKD: HOLO-MAP EDITION (TOTAL TRANSPARENCY)
+# ==============================================================================
+
+# 1. CONFIGURACIÓN DE RUTAS Y DATOS
+find_www <- function() {
+  current <- getwd()
+  if (dir.exists("www")) return(file.path(current, "www"))
+  if (dir.exists("../www")) return(file.path(dirname(current), "www"))
+  return(NULL)
+}
+
+www_path <- find_www()
+if (is.null(www_path)) stop("No se encontró la carpeta 'www'")
+
+# Recursos
+addResourcePath('fn01',     file.path(www_path, 'fn01_top_img'))
+addResourcePath('fn02',     file.path(www_path, 'fn02_trento'))
+addResourcePath('car_01',   file.path(www_path, 'fn03_carrusel01'))
+addResourcePath('car_02',   file.path(www_path, 'fn04_carrusel02'))
+addResourcePath('tkd_imgs', file.path(www_path, 'fn05_tkd'))
+addResourcePath('bg_imgs',  file.path(www_path, 'fn06_background'))
+
+# Datos Geográficos
+world_sf <- sf::st_as_sf(maps::map("world", fill = TRUE, plot = FALSE))
+
+# Lista de Fondos para JS
+bg_files <- list.files(file.path(www_path, "fn06_background"), pattern = "\\.(png|webp|jpg|jpeg)$")
+bg_paths <- paste0("bg_imgs/", bg_files)
+
+# 2. FUNCIONES AUXILIARES
+get_imgs <- function(folder, prefix, class_name) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg|svg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(files, function(img) tags$img(src = paste0(prefix, "/", img), class = class_name))
+}
+
+get_carousel_colored <- function(folder, prefix) {
+  path <- file.path(www_path, folder)
+  files <- list.files(path, pattern = "\\.(png|webp|jpg|jpeg)$")
+  if(length(files) == 0) return(NULL)
+  lapply(rep(files, 5), function(img) {
+    div(class = "carousel-item", tags$img(src = paste0(prefix, "/", img)))
+  })
+}
+
+# ==============================================================================
+# UI
+# ==============================================================================
+
+ui <- fluidPage(
+  useShinyjs(),
+  tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Montserrat:wght@300;700;800&display=swap"),
+    tags$style(HTML("
+      /* RESET */
+      .container-fluid { padding: 0 !important; margin: 0 !important; }
+      body { margin: 0; padding: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; background: #000; }
+
+      /* FONDO DINÁMICO FULL SCREEN */
+      #dynamic-bg {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: -1;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 1.5s ease-in-out;
+      }
+
+      .prism-wrapper {
+        display: flex; height: 100vh; width: 100vw; position: relative;
+        background: rgba(0, 0, 0, 0.4); /* Oscurece un poco el fondo para que resalte el HUD */
+      }
+
+      /* PANEL IZQUIERDO: BRANDING */
+      .left-main {
+        flex: 0.7;
+        display: flex;
+        flex-direction: column;
+        padding-left: 60px;
+        justify-content: center;
+        z-index: 10;
+        color: white;
+      }
+      .fn01-img { height: 35px; width: auto; margin-bottom: 10px; filter: drop-shadow(0 0 10px #00f2fe); }
+      .fn02-img { height: 25px; width: auto; opacity: 0.8; }
+      .prism-title { font-family: 'Orbitron'; font-size: 4.5rem; font-weight: 900; line-height: 0.85; letter-spacing: -2px; margin: 0; text-shadow: 0 0 20px rgba(0,242,254,0.5); }
+
+      /* PANEL CENTRAL: MAPA HOLOGRÁFICO */
+      .center-panel {
+        flex: 2.3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+      }
+
+      /* MAPA TRANSPARENTE */
+      #world_map {
+        width: 100% !important;
+        height: 500px !important;
+        background: transparent !important;
+      }
+      .leaflet-container { background: transparent !important; }
+
+      .map-hud-container {
+        width: 100%;
+        max-width: 950px;
+        transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .map-hidden { opacity: 0; transform: scale(0.9) translateY(20px); pointer-events: none; }
+
+      .map-controls-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: rgba(0, 242, 254, 0.05);
+        padding: 10px 20px;
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(0, 242, 254, 0.2);
+      }
+
+      .country-badge {
+        padding: 10px 20px;
+        background: #00f2fe;
+        color: #000;
+        border-radius: 10px;
+        font-family: 'Orbitron';
+        font-size: 0.9rem;
+        font-weight: 900;
+        min-width: 150px;
+        text-align: center;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+      }
+
+      /* CRISTALES */
+      .crystal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 950px; margin-top: 20px; }
+      .crystal-card {
+        height: 80px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(5px);
+        border-radius: 15px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: white; cursor: pointer; transition: 0.3s;
+      }
+      .crystal-card:hover { background: rgba(0, 242, 254, 0.2); border-color: #00f2fe; transform: translateY(-5px); }
+      .crystal-card span { font-weight: 800; font-size: 0.65rem; letter-spacing: 2px; margin-top: 8px; font-family: 'Orbitron'; }
+
+      /* PANEL DERECHO */
+      .right-tkd-panel {
+        flex: 0.5; background: rgba(0,0,0,0.6); backdrop-filter: blur(15px);
+        display: flex; flex-direction: column; align-items: center; overflow: hidden;
+        border-left: 1px solid rgba(0, 242, 254, 0.2); padding: 15px;
+      }
+      .tkd-scroll-v { display: flex; flex-direction: column; gap: 15px; animation: scrollV 45s linear infinite; }
+      .tkd-img { width: 100%; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+
+      /* BOTONES Y ANIMACIONES */
+      .hud-toggle-btn {
+        position: absolute; top: 5%; right: 5%;
+        background: transparent; border: 1px solid #00f2fe; color: #00f2fe;
+        padding: 8px 15px; border-radius: 5px; font-family: 'Orbitron'; font-size: 0.7rem;
+        cursor: pointer; z-index: 100; transition: 0.3s;
+      }
+      .hud-toggle-btn:hover { background: #00f2fe; color: black; box-shadow: 0 0 20px #00f2fe; }
+
+      .bottom-area { position: absolute; bottom: 0; left: 0; width: 100%; padding-bottom: 20px; z-index: 100; }
+      .carousel-track { width: 100%; overflow: hidden; white-space: nowrap; margin-bottom: 5px; }
+      .carousel-content { display: inline-flex; align-items: center; animation: scrollH 50s linear infinite; }
+      .carousel-item { margin: 0 30px; opacity: 0.6; filter: grayscale(1) brightness(2); }
+      .carousel-item img { height: 35px; }
+
+      @keyframes scrollH { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+      @keyframes scrollV { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+    ")),
+    tags$script(HTML(sprintf("
+      var images = %s;
+      var currentIndex = 0;
+      function nextBG() {
+        var bg = document.getElementById('dynamic-bg');
+        if (bg && images.length > 0) {
+          bg.style.backgroundImage = 'url(' + images[currentIndex] + ')';
+          currentIndex = (currentIndex + 1) %% images.length;
+        }
+      }
+      setInterval(nextBG, 5000);
+      window.onload = nextBG;
+    ", jsonlite::toJSON(bg_paths))))
+  ),
+  
+  div(id = "dynamic-bg"),
+  
+  div(class = "prism-wrapper",
+      # IZQUIERDA
+      div(class = "left-main",
+          div(class = "brand-group",
+              div(get_imgs("fn01_top_img", "fn01", "fn01-img")),
+              div(get_imgs("fn02_trento", "fn02", "fn02-img"))
+          ),
+          h1(class = "prism-title", "NEO", br(), "TKD"),
+          p(style="font-weight:700; color:#00f2fe; margin-top:10px; letter-spacing: 5px;", "HOLO-INTERFACE V1.0")
+      ),
+      
+      # CENTRO (MAPA TRANSPARENTE)
+      div(class = "center-panel",
+          actionButton("btn_hud", "TOGGLE HUD", class = "hud-toggle-btn"),
+          
+          div(id = "map_card_id", class = "map-hud-container",
+              leafletOutput("world_map"),
+              div(class = "map-controls-row",
+                  actionButton("reset_map", icon("sync-alt"), style="background:transparent; border:none; color:white; cursor:pointer;"),
+                  div(style="flex:1;",
+                      selectInput("country_select", NULL,
+                                  choices = c("GEO-LOCATE TARGET..." = "", unique(world_sf$ID)),
+                                  width = "100%")
+                  ),
+                  div(class = "country-badge", textOutput("selected_txt"))
+              )
+          ),
+          
+          div(class = "crystal-grid",
+              div(class = "crystal-card", icon("bolt", class="fa-2x"), span("SPEED")),
+              div(class = "crystal-card", icon("shield-alt", class="fa-2x"), span("DEFENSE")),
+              div(class = "crystal-card", icon("trophy", class="fa-2x"), span("RANK")),
+              div(class = "crystal-card", icon("cog", class="fa-2x"), span("SETUP"))
+          )
+      ),
+      
+      # DERECHA
+      div(class = "right-tkd-panel",
+          div(class = "tkd-scroll-v",
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img"),
+              get_imgs("fn05_tkd", "tkd_imgs", "tkd-img")
+          )
+      ),
+      
+      # BANNERS INFERIORES
+      div(class = "bottom-area",
+          div(class = "carousel-track",
+              div(class = "carousel-content", get_carousel_colored("fn03_carrusel01", "car_01"))
+          ),
+          div(class = "carousel-track",
+              div(class = "carousel-content", style="animation-duration: 35s;", get_carousel_colored("fn04_carrusel02", "car_02"))
+          )
+      )
+  )
+)
+
+# ==============================================================================
+# SERVER
+# ==============================================================================
+
+server <- function(input, output, session) {
+  val_country <- reactiveVal("GLOBAL")
+  
+  observeEvent(input$btn_hud, {
+    shinyjs::toggleClass(id = "map_card_id", class = "map-hidden")
+  })
+  
+  output$world_map <- renderLeaflet({
+    leaflet(world_sf, options = leafletOptions(
+      worldCopyJump = FALSE,
+      minZoom = 2,
+      attributionControl = FALSE,
+      zoomControl = FALSE
+    )) %>%
+      # SIN addProviderTiles para mantener la transparencia del mar
+      addPolygons(
+        fillColor = "rgba(0, 242, 254, 0.1)",
+        weight = 1.5,
+        color = "rgba(255, 255, 255, 0.4)",
+        fillOpacity = 1,
+        layerId = ~ID,
+        highlightOptions = highlightOptions(
+          weight = 3, color = "#00f2fe", fillOpacity = 0.5, bringToFront = TRUE
+        )
+      ) %>%
+      htmlwidgets::onRender("function(el, x) { el.style.background = 'none'; }")
+  })
+  
+  observeEvent(input$country_select, {
+    req(input$country_select)
+    val_country(input$country_select)
+    proxy <- leafletProxy("world_map")
+    proxy %>% clearGroup("highlight")
+    
+    if(input$country_select != "") {
+      selected_poly <- world_sf[world_sf$ID == input$country_select, ]
+      proxy %>% addPolygons(
+        data = selected_poly, fillColor = "#00f2fe", fillOpacity = 0.6,
+        color = "#ffffff", weight = 2, group = "highlight"
+      )
+      bbox <- st_bbox(selected_poly)
+      proxy %>% flyToBounds(bbox[["xmin"]], bbox[["ymin"]], bbox[["xmax"]], bbox[["ymax"]])
+    }
+  })
+  
+  observeEvent(input$world_map_shape_click, {
+    updateSelectInput(session, "country_select", selected = input$world_map_shape_click$id)
+  })
+  
+  observeEvent(input$reset_map, {
+    updateSelectInput(session, "country_select", selected = "")
+    val_country("GLOBAL")
+    leafletProxy("world_map") %>% clearGroup("highlight") %>% flyTo(lng = 0, lat = 20, zoom = 2)
+  })
+  
+  output$selected_txt <- renderText({ val_country() })
+}
+
+shinyApp(ui, server)
