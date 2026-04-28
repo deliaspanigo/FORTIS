@@ -2,7 +2,7 @@
 # MÓDULO: PDF VIEWER - ENCAPSULADO Y PARAMETRIZADO (CORREGIDO)
 # ==============================================================================
 
-mod_pdf_viewer_ui <- function(id) {
+mod_special_one_show_pdf_ui <- function(id) {
   ns <- NS(id)
 
   tagList(
@@ -33,7 +33,7 @@ mod_pdf_viewer_ui <- function(id) {
   )
 }
 
-mod_pdf_viewer_server <- function(id, file_path = NULL, label = "DOCUMENTO", zoom = 100) {
+mod_special_one_show_pdf_server <- function(id, file_path = NULL, label = "DOCUMENTO", zoom = 100) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -84,26 +84,26 @@ mod_pdf_viewer_server <- function(id, file_path = NULL, label = "DOCUMENTO", zoo
 # EJECUCIÓN DIRECTA (APP DE PRUEBA)
 # ==============================================================================
 
-library(shiny)
-
-ui <- fluidPage(
-  tags$style("body { margin: 0; background: #222; }"),
-  div(style = "padding: 20px;",
-      mod_pdf_viewer_ui("pdf_demo")
-  )
-)
-
+# library(shiny)
+#
+# ui <- fluidPage(
+#   tags$style("body { margin: 0; background: #222; }"),
+#   div(style = "padding: 20px;",
+#       mod_special_one_show_pdf_ui("pdf_demo")
+#   )
+# )
+#
 # server <- function(input, output, session) {
 #
 #   # Iniciamos con la ruta directamente
-#   ruta_pdf <- reactiveVal("C:/Users/Legion/bulk/MyInstallers/FORTIS_TKD_installer/FORTIS/inst/www/pack05_graduations/pdf_material/CINTURA_BLU_E_BLU_ROSSO.pdf")
+#   ruta_pdf <- reactiveVal("C:/Users/Legion/bulk/MyInstallers/FORTIS_TKD_installer/FORTIS/inst/www/pack05_graduations/pdf_material/pdf01_CINTURE_BIANCHE_E_BIANCHA_GIALLA.pdf")
 #
 #   # Invocación del servidor
 #   # Nota: pasamos 'ruta_pdf' (el reactivo) sin paréntesis
-#   mod_pdf_viewer_server(
+#   mod_special_one_show_pdf_server(
 #     id = "pdf_demo",
 #     file_path = ruta_pdf,
-#     label = "Manual de Graduación - Cinturón Azul",
+#     label = "Manual Prueba - Demo PDF",
 #     zoom = 100
 #   )
 #
