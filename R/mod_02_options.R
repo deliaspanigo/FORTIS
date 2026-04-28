@@ -85,18 +85,29 @@ mod_02_options_ui <- function(id) {
   )
 }
 
+# ==============================================================================
+# MÓDULO 02: OPTIONS (SERVER COMPLETO CON SALIDA ESTRUCTURADA)
+# ==============================================================================
+
 mod_02_options_server <- function(id, debug = TRUE) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    cat_ids <- c("init", "pack01_history", "pack02_sparring", "pack03_forms", "pack04_refereeing", "pack05_graduations", "fn05_tkd")
-    current_cat <- reactiveVal("init")
-    target_page <- reactiveVal(NULL)
 
+    # Lista de categorías
+    cat_ids <- c("init", "pack01_history", "pack02_sparring", "pack03_forms",
+                 "pack04_refereeing", "pack05_graduations", "fn05_tkd")
+
+    # --- ESTADOS INTERNOS (Los 3 elementos de tu lista) ---
+    current_menu_selection <- reactiveVal("init") # 1. Objeto seleccionado
+    execution_clicked      <- reactiveVal(FALSE)  # 2. ¿Clic en ejecución?
+    final_output_value     <- reactiveVal(NULL)   # 3. Valor para la app
+
+    # 1. RENDERIZADO DE IMÁGENES (REPOSITORIO)
     output$repository_ui <- renderUI({
-      cat <- current_cat()
+      cat <- current_menu_selection()
       if(cat == "init") return(div(style="color:#333; padding:40px; text-align:center; opacity:0.1;", icon("shield-alt", "fa-5x")))
 
-      # Resolución de ruta
+      # Resolución de ruta (Paquete o Local)
       www_path <- "www"
       if (!dir.exists(www_path)) www_path <- system.file("www", package = "FORTIS")
       path_cat <- file.path(www_path, cat)
@@ -104,37 +115,29 @@ mod_02_options_server <- function(id, debug = TRUE) {
       files <- list.files(path_cat, pattern = "\\.(png|jpg|jpeg|webp)$", ignore.case = TRUE)
       if(length(files) == 0) return(NULL)
 
+      # Registrar recurso para Shiny
       addResourcePath(cat, path_cat)
 
-      # --- LÓGICA DE MUESTREO: 20 IMÁGENES POR FILA (100 TOTAL) ---
+      # Lógica de muestreo (100 imágenes total)
       total_needed <- 100
       n_available <- length(files)
 
       if(n_available >= total_needed) {
-        # Si sobran imágenes, tomamos 100 únicas
         master_pool <- sample(files, total_needed, replace = FALSE)
       } else {
-        # Si faltan, tomamos todas las únicas y rellenamos con repetición el resto
         master_pool <- c(files, sample(files, total_needed - n_available, replace = TRUE))
-        master_pool <- sample(master_pool) # Mezclar para que no queden las repetidas al final
+        master_pool <- sample(master_pool)
       }
 
-      # Parámetros de velocidad
-      sec_per_img_fast <- 5
-      sec_per_img_slow <- 9
-
+      # Renderizado de las 5 filas
       tagList(
         lapply(1:5, function(row_idx) {
-          # Extraer segmento de 20 imágenes para esta fila
           start_idx <- ((row_idx - 1) * 20) + 1
           end_idx <- row_idx * 20
           row_base <- master_pool[start_idx:end_idx]
 
-          # Duplicamos para el efecto de scroll infinito (CSS requiere n + n)
-          full_track <- c(row_base, row_base)
-
-          # Cálculo de duración lineal basado en 40 imágenes totales (20 base + 20 clonadas)
-          speed_val <- if(row_idx %% 2 == 0) sec_per_img_slow else sec_per_img_fast
+          full_track <- c(row_base, row_base) # Duplicado para loop infinito
+          speed_val <- if(row_idx %% 2 == 0) 9 else 5
           duration_val <- (length(full_track) * speed_val) / 2
 
           div(class = "track-row",
@@ -147,20 +150,47 @@ mod_02_options_server <- function(id, debug = TRUE) {
       )
     })
 
+    # 2. SELECCIÓN DEL MENÚ (Botones de la izquierda)
     lapply(cat_ids, function(cat) {
       observeEvent(input[[paste0("btn_", cat)]], {
-        current_cat(cat)
+        current_menu_selection(cat) # Actualizamos selección actual
         nav_select("nav_center", cat)
+
+        # UI: Manejo de clases CSS para el resaltado
         lapply(cat_ids, function(id) shinyjs::removeClass(paste0("btn_", id), "selected-btn"))
         shinyjs::addClass(paste0("btn_", cat), "selected-btn")
+
+        # Reset de ejecución al navegar (para que no se dispare solo)
+        execution_clicked(FALSE)
       })
     })
 
-    observeEvent(input$btn_logout, { target_page("page_home") })
+    # 3. BOTONES DE LANZAMIENTO (Botones INITIALIZE)
+    lapply(cat_ids, function(cat) {
+      observeEvent(input[[paste0("launch_", cat)]], {
+        if(debug) print(paste("Botón INITIALIZE presionado para:", cat))
 
+        execution_clicked(TRUE)      # Marcamos ejecución
+        final_output_value(cat)      # Cargamos el valor final
+      })
+    })
+
+    # 4. BOTÓN LOGOUT (Acción directa)
+    observeEvent(input$btn_logout, {
+      execution_clicked(TRUE)
+      final_output_value("home")
+    })
+
+    # --- RETORNO DE LA LISTA ESTRUCTURADA ---
     return(list(
-      goto = reactive({ target_page() }),
-      reset = function() { target_page(NULL) }
+      menu_selection = reactive({ current_menu_selection() }), # Qué está viendo
+      is_executed    = reactive({ execution_clicked() }),      # Si dio clic en abrir
+      value          = reactive({ final_output_value() }),     # El ID a donde ir
+
+      reset = function() {
+        execution_clicked(FALSE)
+        final_output_value(NULL)
+      }
     ))
   })
 }
