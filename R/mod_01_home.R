@@ -7,6 +7,7 @@ mod_01_home_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
     if (posibles == "") {
       for (r in c("inst/www", "www")) if (dir.exists(r)) return(r)
     }
+    posibles <- normalizePath(posibles)
     return(posibles)
   }
 
@@ -120,10 +121,10 @@ mod_01_home_server <- function(id) {
 # ==============================================================================
 # TEST STAND-ALONE (Con fondo negro visible)
 # ==============================================================================
-if (interactive()) {
-  library(shiny)
-  # Aquí lo probamos con fondo negro sólido (opacidad 1)
-  ui <- fluidPage(mod_01_home_ui("test", bg_color = "#000", bg_opacity = 1))
-  server <- function(input, output, session) { mod_01_home_server("test") }
-  shinyApp(ui, server)
-}
+# if (interactive()) {
+#   library(shiny)
+#   # Aquí lo probamos con fondo negro sólido (opacidad 1)
+#   ui <- fluidPage(mod_01_home_ui("test", bg_color = "#000", bg_opacity = 1))
+#   server <- function(input, output, session) { mod_01_home_server("test") }
+#   shinyApp(ui, server)
+# }

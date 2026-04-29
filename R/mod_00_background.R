@@ -11,7 +11,10 @@ mod_00_background_ui <- function(id) {
   # --- Gestión Automatizada de Recursos ---
   find_tkd_path <- function() {
     # Busca la carpeta de imágenes en las rutas estándar de Shiny/Packages
-    posibles <- c("www/fn05_tkd", "inst/www/fn05_tkd", "fn05_tkd")
+    posibles <- system.file("www", "fn05_tkd", package="FORTIS")
+    posibles <- normalizePath(posibles)
+
+    # posibles <- c("www/fn05_tkd", "inst/www/fn05_tkd", "fn05_tkd")
     for (p in posibles) if (dir.exists(p)) return(p)
     return(NULL)
   }
@@ -147,27 +150,27 @@ mod_00_background_server <- function(id, debug = TRUE) {
 # ------------------------------------------------------------------------------
 # TEST APP: Sentencias de ejecución stand-alone
 # ------------------------------------------------------------------------------
-if (interactive()) {
-  library(shiny)
-
-  ui <- fluidPage(
-    tags$head(
-      tags$style(HTML("body, html { margin: 0; padding: 0; background: #000; overflow: hidden; }"))
-    ),
-
-    # Capa de Fondo
-    mod_00_background_ui("bg_standalone"),
-
-    # Capa de Contenido (Prueba de transparencia)
-    div(style = "position: relative; z-index: 100; color: white; text-align: center; padding-top: 40vh; pointer-events: none;",
-        h1("FORTIS BACKGROUND SYSTEM", style = "font-family: 'Impact'; font-size: 4rem; letter-spacing: 15px;"),
-        p("STAND-ALONE MODULE RUNNING", style = "letter-spacing: 5px; color: #00f2fe;")
-    )
-  )
-
-  server <- function(input, output, session) {
-    mod_00_background_server("bg_standalone", debug = TRUE)
-  }
-
-  shinyApp(ui, server)
-}
+# if (interactive()) {
+#   library(shiny)
+#
+#   ui <- fluidPage(
+#     tags$head(
+#       tags$style(HTML("body, html { margin: 0; padding: 0; background: #000; overflow: hidden; }"))
+#     ),
+#
+#     # Capa de Fondo
+#     mod_00_background_ui("bg_standalone"),
+#
+#     # Capa de Contenido (Prueba de transparencia)
+#     div(style = "position: relative; z-index: 100; color: white; text-align: center; padding-top: 40vh; pointer-events: none;",
+#         h1("FORTIS BACKGROUND SYSTEM", style = "font-family: 'Impact'; font-size: 4rem; letter-spacing: 15px;"),
+#         p("STAND-ALONE MODULE RUNNING", style = "letter-spacing: 5px; color: #00f2fe;")
+#     )
+#   )
+#
+#   server <- function(input, output, session) {
+#     mod_00_background_server("bg_standalone", debug = TRUE)
+#   }
+#
+#   shinyApp(ui, server)
+# }

@@ -67,13 +67,18 @@ mod_graduations_manager_server <- function(id) {
     back_event <- reactiveVal(FALSE)
 
     base_path <- system.file("www", "pack05_graduations", "pdf_material", package = "FORTIS")
+    #base_path <- normalizePath(base_path)
+
     yaml_path <- file.path(base_path, "stone_files.yml")
+    print(yaml_path)
+    print(file.exists(yaml_path))
+    yaml_path <- normalizePath(yaml_path)
 
     config_data <- reactive({
       req(file.exists(yaml_path))
       yml <- read_yaml(yaml_path)
       df <- do.call(rbind, lapply(yml$files, as.data.frame))
-      df$full_path <- file.path(base_path, df$file_name)
+      df$full_path <-  normalizePath(file.path(base_path, df$file_name))
       return(df)
     })
 

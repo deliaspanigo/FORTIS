@@ -84,34 +84,34 @@ mod_special_one_show_pdf_server <- function(id, file_path = NULL, label = "DOCUM
 # EJECUCIÓN DIRECTA (APP DE PRUEBA)
 # ==============================================================================
 
-
-if (interactive()) {
-  library(shiny)
-
-  #library(shiny)
-
-  ui <- fluidPage(
-    tags$style("body { margin: 0; background: #222; }"),
-    div(style = "padding: 20px;",
-        mod_special_one_show_pdf_ui("pdf_demo")
-    )
-  )
-
-  server <- function(input, output, session) {
-
-    # Iniciamos con la ruta directamente
-    ruta_pdf <- reactiveVal("C:/Users/Legion/bulk/MyInstallers/FORTIS_TKD_installer/FORTIS/inst/www/pack05_graduations/pdf_material/pdf01_CINTURE_BIANCHE_E_BIANCHA_GIALLA.pdf")
-
-    # Invocación del servidor
-    # Nota: pasamos 'ruta_pdf' (el reactivo) sin paréntesis
-    mod_special_one_show_pdf_server(
-      id = "pdf_demo",
-      file_path = ruta_pdf,
-      label = "Manual Prueba - Demo PDF",
-      zoom = 100
-    )
-
-  }
-
-  shinyApp(ui, server)
-}
+#
+# if (interactive()) {
+#   library(shiny)
+#
+#   #library(shiny)
+#
+#   ui <- fluidPage(
+#     tags$style("body { margin: 0; background: #222; }"),
+#     div(style = "padding: 20px;",
+#         mod_special_one_show_pdf_ui("pdf_demo")
+#     )
+#   )
+#
+#   server <- function(input, output, session) {
+#
+#     # Iniciamos con la ruta directamente
+#     ruta_pdf <- reactiveVal("C:/Users/Legion/bulk/MyInstallers/FORTIS_TKD_installer/FORTIS/inst/www/pack05_graduations/pdf_material/pdf01_CINTURE_BIANCHE_E_BIANCHA_GIALLA.pdf")
+#
+#     # Invocación del servidor
+#     # Nota: pasamos 'ruta_pdf' (el reactivo) sin paréntesis
+#     mod_special_one_show_pdf_server(
+#       id = "pdf_demo",
+#       file_path = ruta_pdf,
+#       label = "Manual Prueba - Demo PDF",
+#       zoom = 100
+#     )
+#
+#   }
+#
+#   shinyApp(ui, server)
+# }

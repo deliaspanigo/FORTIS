@@ -15,6 +15,8 @@ mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
     if (posibles == "") {
       for (r in c("inst/www", "www")) if (dir.exists(r)) return(r)
     }
+    posibles <- normalizePath(posibles)
+
     return(posibles)
   }
 
@@ -275,7 +277,11 @@ mod_02_options_server <- function(id) {
 
       www_path <- "www"
       if (!dir.exists(www_path)) www_path <- system.file("www", package = "FORTIS")
+      www_path <- normalizePath(www_path)
+
       path_cat <- file.path(www_path, cat)
+      path_cat <- normalizePath(path_cat)
+
       files <- list.files(path_cat, pattern = "\\.(png|jpg|jpeg|webp)$", ignore.case = TRUE)
 
       if(length(files) == 0) return(NULL)
