@@ -21,7 +21,7 @@ mod_01_home_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
   }
 
   tagList(
-    useShinyjs(),
+    shinyjs::useShinyjs(),
     tags$head(
       tags$style(HTML(paste0("
         :root {

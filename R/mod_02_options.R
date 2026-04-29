@@ -316,10 +316,10 @@ mod_02_options_server <- function(id) {
   })
 }
 
-if (interactive()) {
-  library(shiny)
-  library(shinyjs)
-  ui <- fluidPage(mod_02_options_ui("test", bg_color = "#000", bg_opacity = 1))
-  server <- function(input, output, session) { mod_02_options_server("test") }
-  shinyApp(ui, server)
-}
+# if (interactive()) {
+#   library(shiny)
+#   library(shinyjs)
+#   ui <- fluidPage(mod_02_options_ui("test", bg_color = "#000", bg_opacity = 1))
+#   server <- function(input, output, session) { mod_02_options_server("test") }
+#   shinyApp(ui, server)
+# }

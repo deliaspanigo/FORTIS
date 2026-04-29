@@ -7,15 +7,17 @@ Description: Software package for taekwondo athlete management, tournament analy
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Imports:
+Imports: 
     shiny,
+    shinyjs,
+    bslib,
+    yaml,
     shinydashboard,
     dplyr,
     ggplot2,
     DT,
     readxl,
     openxlsx,
-    shinyjs,
     jsonlite
 Suggests:
     testthat,

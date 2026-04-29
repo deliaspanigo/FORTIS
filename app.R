@@ -2,7 +2,8 @@ library(shiny)
 library(shinyjs)
 library(bslib)
 library(yaml)
-
+library(shiny)
+library(shinyjs) # <--- ESTO ES LO QUE TE FALTA
 # 1. CARGAR RECURSOS Y MÓDULOS
 devtools::load_all()
 
@@ -12,7 +13,7 @@ cat_ids <- c("pack01_history", "pack02_sparring", "pack03_forms",
 
 # 2. INTERFAZ DE USUARIO (UI)
 ui <- page_fillable(
-  useShinyjs(),
+  shinyjs::useShinyjs(),
 
   tags$head(
     tags$style(HTML("
