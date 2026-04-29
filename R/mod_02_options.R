@@ -202,7 +202,7 @@ mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
                     lapply(seq_along(cat_ids), function(i) {
                       actionButton(ns(paste0("btn_", cat_ids[i])), cat_labels[i], class = "btn-nav")
                     }),
-                    actionButton(ns("btn_logout"), "BACK / LOGOUT", icon = icon("power-off"), class = "btn-nav btn-logout")
+                    actionButton(ns("btn_logout"), "BACK / EXIT", icon = icon("power-off"), class = "btn-nav btn-logout")
                 ),
                 div(class = "panel-center", uiOutput(ns("center_ui"))),
                 div(class = "panel-right", uiOutput(ns("repository_ui")))

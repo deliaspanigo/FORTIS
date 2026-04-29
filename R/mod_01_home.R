@@ -95,7 +95,9 @@ mod_01_home_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
             div(class = "right-side",
                 tags$img(src = "fortis_imgs/fortis_logo_transparent.png", style="width:140px; margin-bottom:10px;", class="hover-scale"),
                 h1(class = "title-text", "FORTIS"),
-                actionButton(ns("enter_btn"), "ENTRAR", class = "btn-enter")
+                h2(" - TKD -", style = "color: white; font-size: 3.5rem; font-weight: bold;"),
+                # h1(class = "title-text", "FORTIS"),
+                actionButton(ns("enter_btn"), "ENTER", class = "btn-enter")
             )
         ),
 

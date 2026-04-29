@@ -42,7 +42,7 @@ mod_graduations_manager_ui <- function(id) {
       "))),
 
       # --- BOTÓN DE VOLVER ---
-      actionButton(ns("btn_back"), " VOLVER AL MENÚ",
+      actionButton(ns("btn_back"), " BACK / EXIT",
                    icon = icon("chevron-left"),
                    style = "background: #444; color: white; border: none; margin-bottom: 15px; font-size: 0.7rem;"),
 
