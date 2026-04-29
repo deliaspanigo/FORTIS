@@ -198,7 +198,7 @@ mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
         div(class = "options-body",
             div(class = "panel-container",
                 div(class = "panel-left",
-                    tags$h6("SYSTEM MODULES", style="color:#444; font-weight:800; margin-bottom:20px; letter-spacing:3px;"),
+                    tags$h6("RESOURCES", style="color:#444; font-weight:800; margin-bottom:20px; letter-spacing:3px;"),
                     lapply(seq_along(cat_ids), function(i) {
                       actionButton(ns(paste0("btn_", cat_ids[i])), cat_labels[i], class = "btn-nav")
                     }),
@@ -258,6 +258,8 @@ mod_02_options_server <- function(id) {
 
       tagList(
         h1("FORTIS", style="font-weight:900; font-family: 'Impact'; font-size: 3.2rem; margin:0;"),
+        h1("-TKD-",  style="font-weight:900; font-family: 'Impact'; font-size: 1.2rem; margin:0;"),
+
         div(cat_labels[sel], style="color: #00f2fe; font-weight:800; letter-spacing: 4px; margin-bottom:10px;"),
         hr(style="width:50%; margin:15px auto; border-color:#333;"),
         div(style="margin-bottom:25px; color:#bbb; font-size:0.95rem; line-height:1.4; padding: 0 10px;",
