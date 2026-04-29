@@ -5,16 +5,31 @@ mod_graduations_manager_ui <- function(id) {
     title = NULL,
     fillable = TRUE,
     sidebar = sidebar(
-      # --- AGREGAMOS BOTÓN DE VOLVER ---
-      actionButton(ns("btn_back"), " VOLVER AL MENÚ",
-                   icon = icon("chevron-left"),
-                   style = "background: #444; color: white; border: none; margin-bottom: 15px; font-size: 0.7rem;"),
-
-      title = div(icon("graduation-cap"), " Cinturones",
-                  style = "font-family: 'Impact', sans-serif; color: #00f2fe;"),
-      width = 300,
-      bg = "#252525",
+      # --- ESTILOS CSS PERSONALIZADOS ---
       tags$style(HTML(paste0("
+        /* 1. Color Cyan para el botón toggle y eliminación de fondos */
+        .sidebar-toggle {
+          color: #00ffff !important;
+          background: transparent !important;
+          border: none !important;
+        }
+
+        /* 2. Ocultar el icono original (SVG o FontAwesome) */
+        .sidebar-toggle .collapse-icon,
+        .sidebar-toggle svg {
+          display: none !important;
+        }
+
+        /* 3. Inyectar el icono de 3 líneas (hamburguesa) */
+        .sidebar-toggle::after {
+          content: '\\f0c9';
+          font-family: 'Font Awesome 5 Free';
+          font-weight: 900;
+          font-size: 1.2rem;
+          display: inline-block;
+        }
+
+        /* 4. Tus estilos originales de los botones de cinturones */
         .btn-grad {
           background: #333; color: #ccc; border: 1px solid #444; margin-bottom: 5px;
           text-align: left; width: 100%; padding: 10px; font-size: 0.8rem;
@@ -25,6 +40,17 @@ mod_graduations_manager_ui <- function(id) {
           background: #00f2fe !important; color: #000 !important; font-weight: 800;
         }
       "))),
+
+      # --- BOTÓN DE VOLVER ---
+      actionButton(ns("btn_back"), " VOLVER AL MENÚ",
+                   icon = icon("chevron-left"),
+                   style = "background: #444; color: white; border: none; margin-bottom: 15px; font-size: 0.7rem;"),
+
+      title = div(icon("graduation-cap"), " Cinturones",
+                  style = "font-family: 'Impact', sans-serif; color: #00f2fe;"),
+      width = 300,
+      bg = "#252525",
+
       uiOutput(ns("menu_ui"))
     ),
     div(style = "background: #000; height: 100%;",
@@ -99,40 +125,47 @@ mod_graduations_manager_server <- function(id) {
 }
 
 
-# library(shiny)
-# library(bslib)
-# library(yaml)
-# library(shinyjs)
+
+# if (interactive()) {
 #
-# # 1. Definir UI de prueba
-# ui_test <- page_fillable(
-#   useShinyjs(),
-#   # Fondo negro para mantener la estética de FORTIS
-#   tags$style("body { background-color: #000; color: white; }"),
 #
-#   mod_graduations_manager_ui("test_grad")
-# )
+#     library(shiny)
+#     library(bslib)
+#     library(yaml)
+#     library(shinyjs)
 #
-# # 2. Definir Server de prueba
-# server_test <- function(input, output, session) {
+#     # 1. Definir UI de prueba
+#     ui_test <- page_fillable(
+#       useShinyjs(),
+#       # Fondo negro para mantener la estética de FORTIS
+#       tags$style("body { background-color: #000; color: white; }"),
 #
-#   # Llamamos al servidor del módulo
-#   grad_logic <- mod_graduations_manager_server("test_grad")
-#
-#   # Observador para probar la señal de "VOLVER"
-#   observeEvent(grad_logic$goto_back(), {
-#     req(grad_logic$goto_back())
-#
-#     showNotification(
-#       "Señal de RETORNO detectada. El App.R principal cerraría este panel.",
-#       type = "message",
-#       duration = 5
+#       mod_graduations_manager_ui("test_grad")
 #     )
 #
-#     # Reseteamos la señal
-#     grad_logic$reset()
-#   })
-# }
+#     # 2. Definir Server de prueba
+#     server_test <- function(input, output, session) {
 #
-# # 3. Ejecutar
-# shinyApp(ui_test, server_test)
+#       # Llamamos al servidor del módulo
+#       grad_logic <- mod_graduations_manager_server("test_grad")
+#
+#       # Observador para probar la señal de "VOLVER"
+#       observeEvent(grad_logic$goto_back(), {
+#         req(grad_logic$goto_back())
+#
+#         showNotification(
+#           "Señal de RETORNO detectada. El App.R principal cerraría este panel.",
+#           type = "message",
+#           duration = 5
+#         )
+#
+#         # Reseteamos la señal
+#         grad_logic$reset()
+#       })
+#     }
+#
+#     # 3. Ejecutar
+#     shinyApp(ui_test, server_test)
+#
+#
+# }
