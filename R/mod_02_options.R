@@ -1,5 +1,5 @@
 # ==============================================================================
-# MÓDULO 02: OPTIONS (LAUNCHER) - VERSIÓN ORIGINAL CON DESCRIPCIONES ÚNICAS
+# MÓDULO 02: OPTIONS (LAUNCHER) - VERSIÓN ORIGINAL RESTAURADA CON PADDING LATERAL
 # ==============================================================================
 
 mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
@@ -47,14 +47,20 @@ mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
       }
       .top-logos-static img { height: 6vh; width: auto; }
 
+      /* AJUSTE DE PADDING LATERAL EN EL BODY */
       .options-body {
         position: relative; z-index: 100;
-        display: flex; width: 100vw; height: 70vh; margin-top: 15vh;
+        display: flex;
+        width: 96vw;             /* Reducido para dar aire a los lados */
+        margin: 15vh auto 0 auto; /* Centrado horizontalmente */
+        height: 70vh;
       }
 
       .panel-left {
         flex: 0 0 20%; padding: 25px; display: flex; flex-direction: column;
-        background: rgba(5,5,5,0.7); backdrop-filter: blur(10px); border-right: 1px solid #1a1a1a;
+        background: rgba(5,5,5,0.7); backdrop-filter: blur(10px);
+        border-right: 1px solid #1a1a1a;
+        border-radius: 15px 0 0 15px; /* Bordes redondeados a la izquierda */
       }
 
       .panel-center {
@@ -66,6 +72,7 @@ mod_02_options_ui <- function(id, bg_color = "#000", bg_opacity = 0) {
       .panel-right {
         flex: 0 0 55%; padding: 0; background: rgba(0,0,0,0.4); overflow: hidden;
         display: flex; flex-direction: column; justify-content: space-around;
+        border-radius: 0 15px 15px 0; /* Bordes redondeados a la derecha */
       }
 
       .btn-nav {
@@ -155,7 +162,6 @@ mod_02_options_server <- function(id) {
         h1("FORTIS", style="font-weight:900; font-family: 'Impact'; font-size: 3.2rem; margin:0;"),
         div(cat_labels[sel], style="color: #00f2fe; font-weight:800; letter-spacing: 4px; margin-bottom:10px;"),
         hr(style="width:50%; margin:15px auto; border-color:#333;"),
-        # Aquí está la descripción única para cada solapa
         div(style="margin-bottom:25px; color:#bbb; font-size:0.95rem; line-height:1.4; padding: 0 10px;",
             cat_descriptions[sel]),
         actionButton(ns(paste0("launch_", sel)), "INITIALIZE",
@@ -210,9 +216,6 @@ mod_02_options_server <- function(id) {
   })
 }
 
-# ==============================================================================
-# TEST STAND-ALONE
-# ==============================================================================
 if (interactive()) {
   library(shiny)
   library(shinyjs)
