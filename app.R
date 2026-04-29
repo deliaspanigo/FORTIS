@@ -1,118 +1,106 @@
 # ==============================================================================
-# FORTIS SYSTEM - MAIN APPLICATION (app.R)
+# FORTIS SYSTEM - APP CORE (app.R) - INTEGRACIÓN MOD 01 Y MOD 02
 # ==============================================================================
 
 library(shiny)
 library(shinyjs)
 library(bslib)
-library(yaml)
 
-# 1. CARGAR LIBRERÍA
+# 1. CARGAR RECURSOS Y MÓDULOS
 devtools::load_all()
 
 # 2. INTERFAZ DE USUARIO (UI)
 ui <- page_fillable(
   useShinyjs(),
-  tags$style("body { padding: 0 !important; margin: 0 !important; overflow: hidden; }"),
 
+  # CSS MAESTRO DE TRANSPARENCIA PARA CAPAS FLOTANTES
+  tags$head(
+    tags$style(HTML("
+      /* Reset global de bslib */
+      body, html, .container-fluid, .page-fillable {
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden;
+      }
+
+      /* Perforar los contenedores de navegación de Shiny */
+      .tab-content, .tab-pane, .navset-hidden {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        height: 100vh !important;
+      }
+
+      /* El motor de fondo (Módulo 00) siempre al fondo absoluto */
+      #global_bg-bg_container {
+        z-index: -1 !important;
+      }
+    "))
+  ),
+
+  # CAPA 0: EL MOTOR DE FONDO (Módulo 00)
+  mod_00_background_ui("global_bg"),
+
+  # CAPA 1: NAVEGACIÓN (Contenido que flota sobre el motor)
   navset_hidden(
     id = "main_nav",
 
-    # --- PANELES PRINCIPALES ---
-    nav_panel_hidden("page_home", mod_01_home_ui("home")),
-    nav_panel_hidden("page_options", mod_02_options_ui("options")),
+    # HOME: Opacidad 0 para ver el carrusel completo
+    nav_panel_hidden("page_home", mod_01_home_ui("home", bg_opacity = 0)),
 
-    # --- PANELES DE CONTENIDO (PACKS) ---
-    nav_panel_hidden("option_history",    mod_special_one_filler_ui("history")),
-    nav_panel_hidden("option_sparring",   mod_special_one_filler_ui("sparring")),
-    nav_panel_hidden("option_forms",      mod_special_one_filler_ui("forms")),
-    nav_panel_hidden("option_refereeing", mod_special_one_filler_ui("refereeing")),
-    nav_panel_hidden("option_graduations", mod_graduations_manager_ui("graduaciones")),
-    nav_panel_hidden("option_engine",     mod_special_one_filler_ui("engine"))
+    # OPTIONS: Opacidad 0 (usa sus propios fondos rgba internos para legibilidad)
+    nav_panel_hidden("page_options", mod_02_options_ui("options", bg_opacity = 0))
   )
 )
 
 # 3. LÓGICA DEL SERVIDOR (SERVER)
 server <- function(input, output, session) {
 
-  # --- INICIALIZACIÓN DE SERVIDORES ---
+  # --- INICIALIZACIÓN DE MÓDULOS ---
 
-  # Core
-  home_logic    <- mod_01_home_server("home", debug = TRUE)
-  options_logic <- mod_02_options_server("options", debug = TRUE)
+  # Motor de fondo
+  bg_engine  <- mod_00_background_server("global_bg", debug = TRUE)
 
-  # Contenido Real
-  grad_logic    <- mod_graduations_manager_server("graduaciones")
+  # Módulo Home (Bienvenida)
+  home_logic <- mod_01_home_server("home")
 
-  # Contenido de Relleno (Special One)
-  history_logic  <- mod_special_one_filler_server("history",    "CRONOLOGÍA Y FILOSOFÍA")
-  sparring_logic <- mod_special_one_filler_server("sparring",   "TÁCTICAS DE COMBATE WT")
-  forms_logic    <- mod_special_one_filler_server("forms",      "ESTRUCTURA DE POOMSAE")
-  referee_logic  <- mod_special_one_filler_server("refereeing", "REGLAMENTO INTERNACIONAL")
-  engine_logic   <- mod_special_one_filler_server("engine",     "FORTIS ANALYTICS ENGINE")
+  # Módulo Options (Launcher)
+  options_logic <- mod_02_options_server("options")
 
 
-  # --- FLUJO 01: HOME -> OPTIONS ---
+  # --- CONTROLADOR DE NAVEGACIÓN ---
+
+  # 1. Al iniciar la app, mostrar el Home
+  observe({
+    nav_select("main_nav", "page_home")
+  })
+
+  # 2. Flujo: HOME -> OPTIONS (Al presionar ENTRAR)
   observeEvent(home_logic$goto(), {
     req(home_logic$goto())
     nav_select("main_nav", "page_options")
-    home_logic$reset()
+    home_logic$reset() # Limpiar estado para permitir re-entrada
   }, ignoreInit = TRUE)
 
-
-  # --- FLUJO 02: RUTEADOR CENTRALIZADO (OPTIONS -> PACKS) ---
+  # 3. Flujo: OPTIONS -> HOME (Al presionar BACK / LOGOUT)
   observeEvent(options_logic$value(), {
-    req(options_logic$value(), options_logic$is_executed())
-    target <- options_logic$value()
-
-    switch(target,
-           "home"               = nav_select("main_nav", "page_home"),
-           "pack01_history"     = nav_select("main_nav", "option_history"),
-           "pack02_sparring"    = nav_select("main_nav", "option_sparring"),
-           "pack03_forms"       = nav_select("main_nav", "option_forms"),
-           "pack04_refereeing"  = nav_select("main_nav", "option_refereeing"),
-           "pack05_graduations" = nav_select("main_nav", "option_graduations"),
-           "fn05_tkd"           = nav_select("main_nav", "option_engine")
-    )
-
-    options_logic$reset()
-  }, ignoreInit = TRUE)
-
-
-  # --- FLUJO 03: GESTIÓN DE RETORNOS (TODOS -> OPTIONS) ---
-
-  # Creamos una lista con todos los logics que tienen botón "Volver"
-  all_back_signals <- list(
-    grad = grad_logic, hist = history_logic, spar = sparring_logic,
-    form = forms_logic, ref = referee_logic, eng = engine_logic
-  )
-
-  # Creamos un observador para cada uno de forma dinámica
-  lapply(all_back_signals, function(logic) {
-    observeEvent(logic$goto_back(), {
-      req(logic$goto_back())
-      nav_select("main_nav", "page_options")
-      logic$reset()
-    }, ignoreInit = TRUE)
+    req(options_logic$value() == "home")
+    nav_select("main_nav", "page_home")
+    options_logic$reset() # Limpiar estado
   })
 
-
-  # --- MONITOR DE SISTEMA (DEBUG) ---
-  observe({
-    isolate({
-      menu_sel <- options_logic$menu_selection()
-      exec_st  <- options_logic$is_executed()
-      val_out  <- if(is.null(options_logic$value())) "NULL" else options_logic$value()
-
-      cat("\n[FORTIS LOG]",
-          "\n> Previsualizando :", menu_sel,
-          "\n> Click Ejecución :", exec_st,
-          "\n> Destino App    :", val_out,
-          "\n--------------------------------")
-    })
+  # 4. (Opcional) Lanzador de módulos específicos
+  observeEvent(options_logic$value(), {
+    val <- options_logic$value()
+    req(val)
+    if(val != "home") {
+      print(paste("SISTEMA: Inicializando módulo ->", val))
+      # Aquí iría la lógica para abrir pack01, pack02, etc.
+    }
   })
+
 }
 
 # 4. LANZAR LA APP
 shinyApp(ui, server)
-# shiny::runApp(launch.browser = TRUE)
